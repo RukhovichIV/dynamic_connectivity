@@ -1,0 +1,7 @@
+{
+    "clang-format.style": "file",
+    "files.associations": {
+        "memory": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "Enabled",
+}
