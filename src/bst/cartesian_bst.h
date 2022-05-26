@@ -1,4 +1,5 @@
 #pragma once
+
 #include <exception>
 #include <initializer_list>
 #include <memory>
@@ -65,7 +66,6 @@ public:
         root_ = std::make_shared<Node>();
         begin_ = root_;
         end_ = root_;
-        size_ = 0;
     }
 
     template <class InitIterator>
@@ -89,7 +89,6 @@ public:
         std::swap(root_, other.root_);
         std::swap(begin_, other.begin_);
         std::swap(end_, other.end_);
-        std::swap(size_, other.size_);
     }
     CartesianBST(std::shared_ptr<IBST<T>> other)
         : CartesianBST(*dynamic_cast<CartesianBST<T>*>(other.get())) {
@@ -101,7 +100,6 @@ public:
         root_ = std::make_shared<Node>();
         begin_ = root_;
         end_ = root_;
-        size_ = 0;
         for (const T& value : other) {
             Insert(value);
         }
@@ -114,7 +112,6 @@ public:
         std::swap(root_, other.root_);
         std::swap(begin_, other.begin_);
         std::swap(end_, other.end_);
-        std::swap(size_, other.size_);
         return *this;
     }
 
@@ -126,23 +123,22 @@ private:
     std::shared_ptr<Node> begin_;
     std::shared_ptr<Node> end_;
     std::shared_ptr<Node> root_;
-    size_t size_{};
 
     /* ---------------------------------------------------
      * --------------ITERATOR IMPLEMENTATION--------------
      * ---------------------------------------------------
      */
 
-    class CartesianTreeItImpl : public BaseImpl {
+    class CartesianBSTItImpl : public BaseImpl {
     public:
-        CartesianTreeItImpl() = delete;
-        explicit CartesianTreeItImpl(std::shared_ptr<Node> pointer) : it_(pointer) {
+        CartesianBSTItImpl() = delete;
+        explicit CartesianBSTItImpl(std::shared_ptr<Node> pointer) : it_(pointer) {
         }
-        CartesianTreeItImpl(const CartesianTreeItImpl& other) : it_(other.it_) {
+        CartesianBSTItImpl(const CartesianBSTItImpl& other) : it_(other.it_) {
         }
 
         std::shared_ptr<BaseImpl> Clone() const override {
-            return std::make_shared<CartesianTreeItImpl>(*this);
+            return std::make_shared<CartesianBSTItImpl>(*this);
         }
         void Increment() override {
             if (!it_->value_) {
@@ -194,7 +190,7 @@ private:
             return &(*it_->value_);
         }
         bool IsEqual(std::shared_ptr<BaseImpl> other) const override {
-            auto casted = std::dynamic_pointer_cast<CartesianTreeItImpl>(other);
+            auto casted = std::dynamic_pointer_cast<CartesianBSTItImpl>(other);
             if (!casted) {
                 return false;
             }
@@ -206,16 +202,20 @@ private:
     };
 
     std::shared_ptr<BaseImpl> Begin() const override {
-        return std::make_shared<CartesianTreeItImpl>(begin_);
+        return std::make_shared<CartesianBSTItImpl>(begin_);
     }
     std::shared_ptr<BaseImpl> End() const override {
-        return std::make_shared<CartesianTreeItImpl>(end_);
+        return std::make_shared<CartesianBSTItImpl>(end_);
     }
 
-    /* ---------------------------------------------------
-     * ----------------PRIVATE FUNCTIONS------------------
-     * ---------------------------------------------------
-     */
+    void Make(std::initializer_list<T> list) {
+    }
+
+    void MergeRight(std::shared_ptr<IBST<T>> other) override {
+        auto other_cast = std::dynamic_pointer_cast<CartesianBST<T>>(other);
+        end_ = other_cast.end_;
+        root_ = CartesianBST<T>::Merge(root_, other_cast.root_);
+    }
 
     static std::shared_ptr<Node> Merge(std::shared_ptr<Node> lhs, std::shared_ptr<Node> rhs) {
         if (!lhs) {
@@ -269,80 +269,5 @@ private:
             }
             left_sub = root;
         }
-    }
-
-    static bool InsertRecursive(std::shared_ptr<Node>& from, std::shared_ptr<Node> new_node) {
-        if (!from) {
-            from = new_node;
-            return true;
-        } else if (from->priority_ >= new_node->priority_) {
-            std::shared_ptr<Node> left_sub = nullptr, right_sub = nullptr;
-            Split(from, new_node->value_, left_sub, right_sub);
-            if (left_sub) {
-                std::shared_ptr<Node> max_v = left_sub;
-                while (max_v->right_) {
-                    max_v = max_v->right_;
-                }
-                if (max_v->value_ < new_node->value_) {
-                    from = Merge(Merge(left_sub, new_node), right_sub);
-                    return true;
-                } else if (new_node->value_ < max_v->value_) {
-                    throw std::runtime_error("Error in function Split()");
-                } else {
-                    from = Merge(left_sub, right_sub);
-                    return false;
-                }
-            } else {
-                new_node->right_ = right_sub;
-                if (right_sub) {
-                    right_sub->parent_ = new_node;
-                }
-                from = new_node;
-                return true;
-            }
-        } else if ((from->value_ < new_node->value_) || (new_node->value_ < from->value_)) {
-            bool result;
-            if (new_node->value_ < from->value_) {
-                result = InsertRecursive(from->left_, new_node);
-                if (from->left_) {
-                    from->left_->parent_ = from;
-                }
-            } else {
-                result = InsertRecursive(from->right_, new_node);
-                if (from->right_) {
-                    from->right_->parent_ = from;
-                }
-            }
-            return result;
-        }
-        return false;
-    }
-    static bool EraseRecursive(std::shared_ptr<Node>& from, const std::optional<T>& value) {
-        bool result;
-        if (!from) {
-            return false;
-        } else if (value < from->value_) {
-            result = EraseRecursive(from->left_, value);
-            if (from->left_) {
-                from->left_->parent_ = from;
-            }
-        } else if (from->value_ < value) {
-            result = EraseRecursive(from->right_, value);
-            if (from->right_) {
-                from->right_->parent_ = from;
-            }
-        } else {
-            from = Merge(from->left_, from->right_);
-            return true;
-        }
-        return result;
-    }
-
-    void RecalcBegin() {
-        std::shared_ptr<Node> cur_node = root_;
-        while (cur_node->left_) {
-            cur_node = cur_node->left_;
-        }
-        begin_ = cur_node;
     }
 };

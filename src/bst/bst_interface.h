@@ -28,8 +28,8 @@ protected:
 
     virtual void Make(std::initializer_list<T> list) = 0;
 
-    virtual std::shared_ptr<IBST> Split(std::shared_ptr<IBSTItImpl> where) = 0;
-    virtual void Merge(std::shared_ptr<IBST> other) = 0;
+    virtual std::shared_ptr<IBST<T>> Split(std::shared_ptr<IBSTItImpl> where) = 0;
+    virtual void MergeRight(std::shared_ptr<IBST<T>> other) = 0;
 
 public:
     virtual ~IBST() = default;
