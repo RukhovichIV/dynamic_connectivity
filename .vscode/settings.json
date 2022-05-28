@@ -42,7 +42,15 @@
         "sstream": "cpp",
         "stdexcept": "cpp",
         "streambuf": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "iomanip": "cpp",
+        "iostream": "cpp",
+        "cinttypes": "cpp"
     },
     "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.default.cppStandard": "c++17",
 }
