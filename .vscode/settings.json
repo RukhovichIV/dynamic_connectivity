@@ -45,4 +45,5 @@
         "typeinfo": "cpp"
     },
     "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.default.cppStandard": "c++17",
 }
