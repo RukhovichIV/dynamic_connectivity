@@ -57,9 +57,9 @@ private:
     class CartesianBSTItImpl : public BaseItImpl {
     public:
         CartesianBSTItImpl() = delete;
-        explicit CartesianBSTItImpl(std::shared_ptr<Node> pointer) : it_(pointer) {
+        explicit CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false) : it_(pointer), is_end_(is_end) {
         }
-        CartesianBSTItImpl(const CartesianBSTItImpl& other) : it_(other.it_) {
+        CartesianBSTItImpl(const CartesianBSTItImpl& other) : it_(other.it_), is_end_(other.is_end_) {
         }
 
         std::shared_ptr<BaseItImpl> Clone() const override {
@@ -67,7 +67,7 @@ private:
         }
 
         void Increment() override {
-            if (!it_->value_) {
+            if (is_end_) {
                 throw std::runtime_error("Index out of range while increasing");
             }
             if (it_->right_) {
@@ -77,14 +77,22 @@ private:
                 }
             } else {
                 auto parent = it_->parent_.lock();
-                while (parent->right_ == it_) {
+                while (parent && parent->right_ == it_) {
                     it_ = parent;
                     parent = it_->parent_.lock();
                 }
-                it_ = parent;
+                if (parent) {
+                    it_ = parent;
+                } else {
+                    is_end_ = true;
+                }
             }
         }
         void Decrement() override {
+            if (is_end_) {
+                is_end_ = false;
+                return;
+            }
             if (it_->left_) {
                 it_ = it_->left_;
                 while (it_->right_) {
@@ -105,14 +113,14 @@ private:
         }
 
         const T Dereferencing() const override {
-            if (!it_->value_) {
-                throw std::runtime_error("Index out of range on operator*");
+            if (is_end_) {
+                throw std::runtime_error("Index out of range in operator*");
             }
             return *(it_->value_);
         }
         const T* Arrow() const override {
-            if (!it_->value_) {
-                throw std::runtime_error("Index out of range on operator->");
+            if (is_end_) {
+                throw std::runtime_error("Index out of range in operator->");
             }
             return &(*it_->value_);
         }
@@ -122,11 +130,16 @@ private:
             if (!casted) {
                 return false;
             }
-            return it_ == casted->it_;
+            return it_ == casted->it_ && is_end_ == casted->is_end_;
         }
 
     private:
+        std::pair<std::shared_ptr<Node>, bool> Get() const {
+            return std::make_pair(it_, is_end_);
+        }
+
         std::shared_ptr<Node> it_;
+        bool is_end_;
     };
 
 public:
@@ -135,7 +148,7 @@ public:
     template <class InitIterator>
     CartesianBST(InitIterator begin, InitIterator end) {
         if (begin == end) {
-            begin_ = end_ = root_ = std::make_shared<Node>(std::nullopt, Random::Next());
+            begin_ = end_ = root_ = nullptr;
             return;
         }
         std::vector<uint32_t> priorities;
@@ -192,11 +205,25 @@ private:
     std::shared_ptr<Node> end_;
     std::shared_ptr<Node> root_;
 
-    std::shared_ptr<IBST<T>> Split(std::shared_ptr<BaseItImpl> where) override {
-        throw std::logic_error("Not implemented");
+    CartesianBST(std::shared_ptr<Node> root) : root_(root) {
+        RecalcBeginEnd();
     }
 
-    void MergeRight(std::shared_ptr<IBST<T>> other) override {
+    std::shared_ptr<IBST<T>> Split(std::shared_ptr<BaseItImpl> where) override {
+        auto node = std::dynamic_pointer_cast<CartesianBSTItImpl>(where)->Get();
+        if (node.second) {
+            throw std::logic_error("Cannot split in empty parts");
+        }
+        root_ = node.first;
+        std::shared_ptr<Node> other = root_->right_;
+        root_->right_ = nullptr;
+        other->parent_ = std::weak_ptr<Node>();
+        SplitRecursive(root_->parent_.lock(), root_, other);
+        RecalcBeginEnd();
+        return std::make_shared<CartesianBST<T>>(other);
+    }
+
+    void Merge(std::shared_ptr<IBST<T>> other) override {
         auto other_cast = std::dynamic_pointer_cast<CartesianBST<T>>(other);
         end_ = other_cast->end_;
         root_ = CartesianBST<T>::MergeRecursive(root_, other_cast->root_);
@@ -219,7 +246,7 @@ private:
         return std::make_shared<CartesianBSTItImpl>(begin_);
     }
     std::shared_ptr<BaseItImpl> End() const override {
-        return std::make_shared<CartesianBSTItImpl>(end_);
+        return std::make_shared<CartesianBSTItImpl>(end_, true);
     }
 
     /* ---------------------------------------------------
@@ -276,37 +303,34 @@ private:
         }
     }
 
-    static void SplitRecursive(std::shared_ptr<Node> root, const std::optional<T>& value,
+    static void SplitRecursive(std::shared_ptr<Node> from,
                                std::shared_ptr<Node>& left_sub, std::shared_ptr<Node>& right_sub) {
-        std::shared_ptr<Node> new_subtree = nullptr;
-        if (value < root->value_) {
-            if (!root->left_) {
-                left_sub = nullptr;
-            } else {
-                SplitRecursive(root->left_, value, left_sub, new_subtree);
-                root->left_ = new_subtree;
-                if (new_subtree) {
-                    new_subtree->parent_ = root;
-                }
-                if (left_sub) {
-                    left_sub->parent_ = std::weak_ptr<Node>();
-                }
-            }
-            right_sub = root;
-        } else {
-            if (!root->right_) {
-                right_sub = nullptr;
-            } else {
-                SplitRecursive(root->right_, value, new_subtree, right_sub);
-                root->right_ = new_subtree;
-                if (new_subtree) {
-                    new_subtree->parent_ = root;
-                }
-                if (right_sub) {
-                    right_sub->parent_ = std::weak_ptr<Node>();
-                }
-            }
-            left_sub = root;
+        if (!from) {
+            return;
         }
+        if (from->right_ == left_sub) {
+            left_sub = from;
+        } else if (from->right_ == right_sub) {
+            from->right_ = left_sub;
+            if (left_sub) {
+                left_sub->parent_ = from;
+            }
+            left_sub = from;
+            if (right_sub) {
+                right_sub->parent_ = std::weak_ptr<Node>();
+            }
+        } else if (from->left_ == right_sub) {
+            right_sub = from;
+        } else if (from->left_ == left_sub) {
+            from->left_ = right_sub;
+            if (right_sub) {
+                right_sub->parent_ = from;
+            }
+            right_sub = from;
+            if (left_sub) {
+                left_sub->parent_ = std::weak_ptr<Node>();
+            }
+        }
+        SplitRecursive(from->parent_.lock(), left_sub, right_sub);
     }
 };

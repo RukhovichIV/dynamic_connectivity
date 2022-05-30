@@ -27,7 +27,7 @@ protected:
     virtual std::shared_ptr<IBSTItImpl> End() const = 0;
 
     virtual std::shared_ptr<IBST<T>> Split(std::shared_ptr<IBSTItImpl> where) = 0;
-    virtual void MergeRight(std::shared_ptr<IBST<T>> other) = 0;
+    virtual void Merge(std::shared_ptr<IBST<T>> other) = 0;
 
 public:
     virtual ~IBST() = default;
@@ -83,10 +83,6 @@ public:
     }
     iterator end() const {
         return iterator(End());
-    }
-
-    void make(std::initializer_list<T> list) {
-        Make(list);
     }
 
     std::shared_ptr<IBST> split(iterator where) {
