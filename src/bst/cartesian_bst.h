@@ -78,7 +78,7 @@ private:
                     it_ = it_->left_;
                 }
             } else {
-                auto parent = it_->parent_.lock();
+                auto parent = it_->parent_.lock(), start = it_;
                 while (parent && parent->right_ == it_) {
                     it_ = parent;
                     parent = it_->parent_.lock();
@@ -86,6 +86,7 @@ private:
                 if (parent) {
                     it_ = parent;
                 } else {
+                    it_ = start;
                     is_end_ = true;
                 }
             }

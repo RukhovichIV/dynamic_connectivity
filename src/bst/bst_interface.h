@@ -37,6 +37,9 @@ public:
         iterator() = delete;
         iterator(const iterator& other) : pimpl_(other.pimpl_) {
         }
+        explicit iterator(std::shared_ptr<IBSTItImpl> pimpl) : pimpl_(pimpl) {
+        }
+
         ~iterator() = default;
 
         iterator& operator++() {
@@ -72,9 +75,11 @@ public:
             return !pimpl_->IsEqual(other.pimpl_);
         }
 
-    private:
-        explicit iterator(std::shared_ptr<IBSTItImpl> pimpl) : pimpl_(pimpl) {
+        const std::shared_ptr<IBSTItImpl> get() const {
+            return pimpl_;
         }
+
+    private:
         std::shared_ptr<IBSTItImpl> pimpl_;
     };
 
@@ -86,7 +91,7 @@ public:
     }
 
     std::shared_ptr<IBST> split(iterator where) {
-        return Split(where.pimpl_);
+        return Split(where.get());
     }
 
     void merge(std::shared_ptr<IBST> other) {
