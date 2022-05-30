@@ -57,9 +57,11 @@ private:
     class CartesianBSTItImpl : public BaseItImpl {
     public:
         CartesianBSTItImpl() = delete;
-        explicit CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false) : it_(pointer), is_end_(is_end) {
+        explicit CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false)
+            : it_(pointer), is_end_(is_end) {
         }
-        CartesianBSTItImpl(const CartesianBSTItImpl& other) : it_(other.it_), is_end_(other.is_end_) {
+        CartesianBSTItImpl(const CartesianBSTItImpl& other)
+            : it_(other.it_), is_end_(other.is_end_) {
         }
 
         std::shared_ptr<BaseItImpl> Clone() const override {
@@ -133,17 +135,21 @@ private:
             return it_ == casted->it_ && is_end_ == casted->is_end_;
         }
 
-    private:
         std::pair<std::shared_ptr<Node>, bool> Get() const {
             return std::make_pair(it_, is_end_);
         }
 
+    private:
         std::shared_ptr<Node> it_;
         bool is_end_;
     };
 
 public:
     CartesianBST() = delete;
+
+    explicit CartesianBST(std::shared_ptr<Node> root) : root_(root) {
+        RecalcBeginEnd();
+    }
 
     template <class InitIterator>
     CartesianBST(InitIterator begin, InitIterator end) {
@@ -204,10 +210,6 @@ private:
     std::shared_ptr<Node> begin_;
     std::shared_ptr<Node> end_;
     std::shared_ptr<Node> root_;
-
-    CartesianBST(std::shared_ptr<Node> root) : root_(root) {
-        RecalcBeginEnd();
-    }
 
     std::shared_ptr<IBST<T>> Split(std::shared_ptr<BaseItImpl> where) override {
         auto node = std::dynamic_pointer_cast<CartesianBSTItImpl>(where)->Get();
@@ -303,8 +305,8 @@ private:
         }
     }
 
-    static void SplitRecursive(std::shared_ptr<Node> from,
-                               std::shared_ptr<Node>& left_sub, std::shared_ptr<Node>& right_sub) {
+    static void SplitRecursive(std::shared_ptr<Node> from, std::shared_ptr<Node>& left_sub,
+                               std::shared_ptr<Node>& right_sub) {
         if (!from) {
             return;
         }
