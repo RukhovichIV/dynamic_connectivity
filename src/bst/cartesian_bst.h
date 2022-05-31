@@ -217,13 +217,16 @@ private:
         if (node.second) {
             throw std::logic_error("Cannot split in empty parts");
         }
-        root_ = node.first;
-        std::shared_ptr<Node> other = root_->right_;
-        root_->right_ = nullptr;
-        other->parent_ = std::weak_ptr<Node>();
-        SplitRecursive(root_->parent_.lock(), root_, other);
+        std::shared_ptr<Node> lhs = node.first;
+        std::shared_ptr<Node> rhs = lhs->right_;
+        lhs->right_ = nullptr;
+        if (rhs) {
+            rhs->parent_ = std::weak_ptr<Node>();
+        }
+        SplitRecursive(lhs->parent_.lock(), lhs, rhs);
+        root_ = lhs;
         RecalcBeginEnd();
-        return std::make_shared<CartesianBST<T>>(other);
+        return std::make_shared<CartesianBST<T>>(rhs);
     }
 
     void Merge(std::shared_ptr<IBST<T>> other) override {
@@ -311,8 +314,20 @@ private:
         if (!from) {
             return;
         }
-        if (from->right_ == left_sub) {
+        // The order here is important. We should look at left_sub first
+        if (from->left_ == left_sub) {
+            from->left_ = right_sub;
+            if (right_sub) {
+                right_sub->parent_ = from;
+            }
+            right_sub = from;
+            if (left_sub) {
+                left_sub->parent_ = std::weak_ptr<Node>();
+            }
+        } else if (from->right_ == left_sub) {
             left_sub = from;
+        } else if (from->left_ == right_sub) {
+            right_sub = from;
         } else if (from->right_ == right_sub) {
             from->right_ = left_sub;
             if (left_sub) {
@@ -322,17 +337,8 @@ private:
             if (right_sub) {
                 right_sub->parent_ = std::weak_ptr<Node>();
             }
-        } else if (from->left_ == right_sub) {
-            right_sub = from;
-        } else if (from->left_ == left_sub) {
-            from->left_ = right_sub;
-            if (right_sub) {
-                right_sub->parent_ = from;
-            }
-            right_sub = from;
-            if (left_sub) {
-                left_sub->parent_ = std::weak_ptr<Node>();
-            }
+        } else {
+            throw std::logic_error("Impossible behaviour");
         }
         SplitRecursive(from->parent_.lock(), left_sub, right_sub);
     }

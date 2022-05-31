@@ -1,4 +1,5 @@
 #define CATCH_CONFIG_MAIN
+
 #include <iostream>
 
 #include "../../src/bst/bst_interface.h"
@@ -72,4 +73,26 @@ TEST_CASE("Test split same") {
     auto other_tree = tree->split(it);
     CheckTreeContent(tree, std::vector<int>({5, 5, 5, 5}));
     CheckTreeContent(other_tree, std::vector<int>({5, 5}));
+}
+
+TEST_CASE("Test split and merge") {
+    std::vector<int> lhs_vals = {1, 2};
+    std::vector<int> rhs_vals = {2, 3, 4, 5};
+    std::shared_ptr<IBST<int>> lhs_tree =
+        std::make_shared<CartesianBST<int>>(lhs_vals.begin(), lhs_vals.end());
+    std::shared_ptr<IBST<int>> rhs_tree =
+        std::make_shared<CartesianBST<int>>(rhs_vals.begin(), rhs_vals.end());
+    auto it = rhs_tree->begin();
+    ++it;
+    auto other_tree = rhs_tree->split(it);
+    SECTION("Merge works consecutive") {
+        lhs_tree->merge(rhs_tree);
+        CheckTreeContent(lhs_tree, std::vector<int>({1, 2, 2, 3}));
+        CheckTreeContent(other_tree, std::vector<int>({4, 5}));
+    }
+    SECTION("Merge works always") {
+        lhs_tree->merge(other_tree);
+        CheckTreeContent(lhs_tree, std::vector<int>({1, 2, 4, 5}));
+        CheckTreeContent(rhs_tree, std::vector<int>({2, 3}));
+    }
 }
