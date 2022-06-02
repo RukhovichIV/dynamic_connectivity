@@ -1,7 +1,5 @@
 #define CATCH_CONFIG_MAIN
 
-#include <iostream>
-
 #include "../../src/bst/bst_interface.h"
 #include "../../src/bst/cartesian_bst.h"
 #include "../catch/catch.hpp"

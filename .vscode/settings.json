@@ -81,7 +81,8 @@
         "variant": "cpp",
         "__functional_base": "cpp",
         "future": "cpp",
-        "condition_variable": "cpp"
+        "condition_variable": "cpp",
+        "unordered_set": "cpp"
     },
     "C_Cpp.errorSquiggles": "Enabled",
     "C_Cpp.default.cppStandard": "c++17",
