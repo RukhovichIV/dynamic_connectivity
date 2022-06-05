@@ -21,13 +21,19 @@ protected:
         virtual const T* Arrow() const = 0;
 
         virtual bool IsEqual(std::shared_ptr<IBSTItImpl> other) const = 0;
+
+        virtual std::shared_ptr<IBSTItImpl> FindRoot() const = 0;
+
+        virtual std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split(
+            bool on_right) const = 0;
     };
 
     virtual std::shared_ptr<IBSTItImpl> Begin() const = 0;
     virtual std::shared_ptr<IBSTItImpl> End() const = 0;
 
-    virtual std::shared_ptr<IBST<T>> Split(std::shared_ptr<IBSTItImpl> where) = 0;
     virtual void Merge(std::shared_ptr<IBST<T>> other) = 0;
+
+    virtual bool IsEmpty() const = 0;
 
 public:
     virtual ~IBST() = default;
@@ -79,6 +85,15 @@ public:
             return pimpl_;
         }
 
+        iterator get_root() const {
+            return pimpl_->FindRoot();
+        }
+
+        std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> split(
+            bool on_right = true) const {
+            return pimpl_->Split(on_right);
+        }
+
     private:
         std::shared_ptr<IBSTItImpl> pimpl_;
     };
@@ -90,11 +105,11 @@ public:
         return iterator(End());
     }
 
-    std::shared_ptr<IBST> split(iterator where) {
-        return Split(where.get());
-    }
-
     void merge(std::shared_ptr<IBST> other) {
         Merge(other);
+    }
+
+    bool empty() const {
+        return IsEmpty();
     }
 };

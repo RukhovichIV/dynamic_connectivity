@@ -58,9 +58,9 @@ TEST_CASE("Test simple split") {
     std::shared_ptr<IBST<int>> tree = std::make_shared<CartesianBST<int>>(vals.begin(), vals.end());
     auto it = tree->begin();
     ++it, ++it;
-    auto other_tree = tree->split(it);
-    CheckTreeContent(tree, std::vector<int>({1, 2, 3}));
-    CheckTreeContent(other_tree, std::vector<int>({4, 5, 6}));
+    auto tree_pair = it.split();
+    CheckTreeContent(tree_pair.first, std::vector<int>({1, 2, 3}));
+    CheckTreeContent(tree_pair.second, std::vector<int>({4, 5, 6}));
 }
 
 TEST_CASE("Test split same") {
@@ -68,9 +68,9 @@ TEST_CASE("Test split same") {
     std::shared_ptr<IBST<int>> tree = std::make_shared<CartesianBST<int>>(vals.begin(), vals.end());
     auto it = tree->begin();
     ++it, ++it, ++it;
-    auto other_tree = tree->split(it);
-    CheckTreeContent(tree, std::vector<int>({5, 5, 5, 5}));
-    CheckTreeContent(other_tree, std::vector<int>({5, 5}));
+    auto tree_pair = it.split();
+    CheckTreeContent(tree_pair.first, std::vector<int>({5, 5, 5, 5}));
+    CheckTreeContent(tree_pair.second, std::vector<int>({5, 5}));
 }
 
 TEST_CASE("Test split and merge") {
@@ -82,15 +82,15 @@ TEST_CASE("Test split and merge") {
         std::make_shared<CartesianBST<int>>(rhs_vals.begin(), rhs_vals.end());
     auto it = rhs_tree->begin();
     ++it;
-    auto other_tree = rhs_tree->split(it);
+    auto tree_pair = it.split();
     SECTION("Merge works consecutive") {
-        lhs_tree->merge(rhs_tree);
+        lhs_tree->merge(tree_pair.first);
         CheckTreeContent(lhs_tree, std::vector<int>({1, 2, 2, 3}));
-        CheckTreeContent(other_tree, std::vector<int>({4, 5}));
+        CheckTreeContent(tree_pair.second, std::vector<int>({4, 5}));
     }
     SECTION("Merge works always") {
-        lhs_tree->merge(other_tree);
+        lhs_tree->merge(tree_pair.second);
         CheckTreeContent(lhs_tree, std::vector<int>({1, 2, 4, 5}));
-        CheckTreeContent(rhs_tree, std::vector<int>({2, 3}));
+        CheckTreeContent(tree_pair.first, std::vector<int>({2, 3}));
     }
 }

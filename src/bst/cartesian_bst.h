@@ -57,7 +57,7 @@ private:
     class CartesianBSTItImpl : public BaseItImpl {
     public:
         CartesianBSTItImpl() = delete;
-        explicit CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false)
+        CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false)
             : it_(pointer), is_end_(is_end) {
         }
         CartesianBSTItImpl(const CartesianBSTItImpl& other)
@@ -136,8 +136,96 @@ private:
             return it_ == casted->it_ && is_end_ == casted->is_end_;
         }
 
-        std::pair<std::shared_ptr<Node>, bool> Get() const {
-            return std::make_pair(it_, is_end_);
+        std::shared_ptr<BaseItImpl> FindRoot() const override {
+            auto it = it_;
+            while (it->parent_) {
+                it = it->parent.lock();
+            }
+            return std::make_shared<CartesianBSTItImpl>(it);
+        }
+
+        std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split(
+            bool on_right) const override {
+            if (is_end_) {
+                throw std::logic_error("Cannot split in empty parts");
+            }
+            if (on_right) {
+                std::shared_ptr<Node> lhs = it_;
+                std::shared_ptr<Node> rhs = lhs->right_;
+                lhs->right_ = nullptr;
+                if (rhs) {
+                    rhs->parent_ = std::weak_ptr<Node>();
+                }
+                std::shared_ptr<Node> from = lhs->parent_.lock();
+                while (from) {
+                    // The order here is important. We should look at lhs first
+                    if (from->left_ == lhs) {
+                        from->left_ = rhs;
+                        if (rhs) {
+                            rhs->parent_ = from;
+                        }
+                        rhs = from;
+                        if (lhs) {
+                            lhs->parent_ = std::weak_ptr<Node>();
+                        }
+                    } else if (from->right_ == lhs) {
+                        lhs = from;
+                    } else if (from->left_ == rhs) {
+                        rhs = from;
+                    } else if (from->right_ == rhs) {
+                        from->right_ = lhs;
+                        if (lhs) {
+                            lhs->parent_ = from;
+                        }
+                        lhs = from;
+                        if (rhs) {
+                            rhs->parent_ = std::weak_ptr<Node>();
+                        }
+                    } else {
+                        throw std::logic_error("Impossible behaviour");
+                    }
+                    from = from->parent_.lock();
+                }
+            } else {
+                std::shared_ptr<Node> rhs = it_;
+                std::shared_ptr<Node> lhs = rhs->left_;
+                rhs->left_ = nullptr;
+                if (lhs) {
+                    lhs->parent_ = std::weak_ptr<Node>();
+                }
+                std::shared_ptr<Node> from = rhs->parent_.lock();
+                while (from) {
+                    // The order here is important. We should look at lhs first
+                    if (from->right_ == rhs) {
+                        from->right_ = lhs;
+                        if (lhs) {
+                            lhs->parent_ = from;
+                        }
+                        lhs = from;
+                        if (rhs) {
+                            rhs->parent_ = std::weak_ptr<Node>();
+                        }
+                    } else if (from->left_ == rhs) {
+                        rhs = from;
+                    } else if (from->right_ == lhs) {
+                        lhs = from;
+                    } else if (from->left_ == lhs) {
+                        from->left_ = rhs;
+                        if (rhs) {
+                            rhs->parent_ = from;
+                        }
+                        rhs = from;
+                        if (lhs) {
+                            lhs->parent_ = std::weak_ptr<Node>();
+                        }
+                    } else {
+                        throw std::logic_error("Impossible behaviour");
+                    }
+                    from = from->parent_.lock();
+                }
+            }
+            return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
+                                  std::make_shared<CartesianBST<T>>(rhs));
         }
 
     private:
@@ -176,9 +264,10 @@ public:
         std::swap(root_, other.root_);
         std::swap(begin_, other.begin_);
         std::swap(end_, other.end_);
+        std::swap(is_empty_, other.is_empty_);
     }
     CartesianBST(std::shared_ptr<IBST<T>> other)
-        : CartesianBST(*dynamic_cast<CartesianBST<T>*>(other.get())) {
+        : CartesianBST(*std::dynamic_pointer_cast<CartesianBST<T>>(other)) {
     }
     CartesianBST& operator=(const CartesianBST& other) {
         throw std::logic_error("Not implemented");
@@ -200,6 +289,7 @@ public:
         std::swap(root_, other.root_);
         std::swap(begin_, other.begin_);
         std::swap(end_, other.end_);
+        std::swap(is_empty_, other.is_empty_);
         return *this;
     }
 
@@ -211,31 +301,38 @@ private:
     std::shared_ptr<Node> begin_;
     std::shared_ptr<Node> end_;
     std::shared_ptr<Node> root_;
-
-    std::shared_ptr<IBST<T>> Split(std::shared_ptr<BaseItImpl> where) override {
-        auto node = std::dynamic_pointer_cast<CartesianBSTItImpl>(where)->Get();
-        if (node.second) {
-            throw std::logic_error("Cannot split in empty parts");
-        }
-        std::shared_ptr<Node> lhs = node.first;
-        std::shared_ptr<Node> rhs = lhs->right_;
-        lhs->right_ = nullptr;
-        if (rhs) {
-            rhs->parent_ = std::weak_ptr<Node>();
-        }
-        SplitRecursive(lhs->parent_.lock(), lhs, rhs);
-        root_ = lhs;
-        RecalcBeginEnd();
-        return std::make_shared<CartesianBST<T>>(rhs);
-    }
+    bool is_empty_;
 
     void Merge(std::shared_ptr<IBST<T>> other) override {
+        if (other->empty()) {
+            return;
+        }
         auto other_cast = std::dynamic_pointer_cast<CartesianBST<T>>(other);
+        if (is_empty_) {
+            *this = std::move(*other_cast);
+            return;
+        }
         end_ = other_cast->end_;
         root_ = CartesianBST<T>::MergeRecursive(root_, other_cast->root_);
     }
 
+    bool IsEmpty() const override {
+        return is_empty_;
+    }
+
+    std::shared_ptr<BaseItImpl> Begin() const override {
+        return std::make_shared<CartesianBSTItImpl>(begin_);
+    }
+    std::shared_ptr<BaseItImpl> End() const override {
+        return std::make_shared<CartesianBSTItImpl>(end_, true);
+    }
+
     void RecalcBeginEnd() {
+        if (!root_) {
+            begin_ = end_ = root_;
+            is_empty_ = true;
+            return;
+        }
         std::shared_ptr<Node> cur_node = root_;
         while (cur_node->left_) {
             cur_node = cur_node->left_;
@@ -246,13 +343,7 @@ private:
             cur_node = cur_node->right_;
         }
         end_ = cur_node;
-    }
-
-    std::shared_ptr<BaseItImpl> Begin() const override {
-        return std::make_shared<CartesianBSTItImpl>(begin_);
-    }
-    std::shared_ptr<BaseItImpl> End() const override {
-        return std::make_shared<CartesianBSTItImpl>(end_, true);
+        is_empty_ = false;
     }
 
     /* ---------------------------------------------------
@@ -307,39 +398,5 @@ private:
             }
             return rhs;
         }
-    }
-
-    static void SplitRecursive(std::shared_ptr<Node> from, std::shared_ptr<Node>& left_sub,
-                               std::shared_ptr<Node>& right_sub) {
-        if (!from) {
-            return;
-        }
-        // The order here is important. We should look at left_sub first
-        if (from->left_ == left_sub) {
-            from->left_ = right_sub;
-            if (right_sub) {
-                right_sub->parent_ = from;
-            }
-            right_sub = from;
-            if (left_sub) {
-                left_sub->parent_ = std::weak_ptr<Node>();
-            }
-        } else if (from->right_ == left_sub) {
-            left_sub = from;
-        } else if (from->left_ == right_sub) {
-            right_sub = from;
-        } else if (from->right_ == right_sub) {
-            from->right_ = left_sub;
-            if (left_sub) {
-                left_sub->parent_ = from;
-            }
-            left_sub = from;
-            if (right_sub) {
-                right_sub->parent_ = std::weak_ptr<Node>();
-            }
-        } else {
-            throw std::logic_error("Impossible behaviour");
-        }
-        SplitRecursive(from->parent_.lock(), left_sub, right_sub);
     }
 };
