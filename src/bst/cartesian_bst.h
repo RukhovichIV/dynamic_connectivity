@@ -33,6 +33,7 @@ private:
     };
 
     struct Node {
+        Node() = delete;
         Node(std::optional<T> value, uint32_t priority) : priority_(priority), value_(value) {
             left_ = nullptr;
             right_ = nullptr;
@@ -93,6 +94,9 @@ private:
         }
         void Decrement() override {
             if (is_end_) {
+                if (!it_) {
+                    throw std::runtime_error("Index out of range while decreasing");
+                }
                 is_end_ = false;
                 return;
             }
@@ -138,8 +142,8 @@ private:
 
         std::shared_ptr<BaseItImpl> FindRoot() const override {
             auto it = it_;
-            while (it->parent_) {
-                it = it->parent.lock();
+            while (!it->parent_.expired()) {
+                it = it->parent_.lock();
             }
             return std::make_shared<CartesianBSTItImpl>(it);
         }
@@ -186,6 +190,8 @@ private:
                     }
                     from = from->parent_.lock();
                 }
+                return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
+                                      std::make_shared<CartesianBST<T>>(rhs));
             } else {
                 std::shared_ptr<Node> rhs = it_;
                 std::shared_ptr<Node> lhs = rhs->left_;
@@ -223,9 +229,9 @@ private:
                     }
                     from = from->parent_.lock();
                 }
+                return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
+                                      std::make_shared<CartesianBST<T>>(rhs));
             }
-            return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
-                                  std::make_shared<CartesianBST<T>>(rhs));
         }
 
     private:
@@ -244,6 +250,7 @@ public:
     CartesianBST(InitIterator begin, InitIterator end) {
         if (begin == end) {
             begin_ = end_ = root_ = nullptr;
+            is_empty_ = true;
             return;
         }
         std::vector<uint32_t> priorities;
@@ -321,6 +328,9 @@ private:
     }
 
     std::shared_ptr<BaseItImpl> Begin() const override {
+        if (is_empty_) {
+            return std::make_shared<CartesianBSTItImpl>(end_, true);
+        }
         return std::make_shared<CartesianBSTItImpl>(begin_);
     }
     std::shared_ptr<BaseItImpl> End() const override {
