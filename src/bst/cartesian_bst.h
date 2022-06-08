@@ -39,12 +39,6 @@ private:
             right_ = nullptr;
             parent_ = std::weak_ptr<Node>();
         }
-        Node(const Node& other) : value_(other.value_) {
-            left_ = other.left_;
-            right_ = other.right_;
-            parent_ = other.parent_;
-            priority_ = other.priority_;
-        }
 
         std::shared_ptr<Node> left_;
         std::shared_ptr<Node> right_;
@@ -148,90 +142,48 @@ private:
             return std::make_shared<CartesianBSTItImpl>(it);
         }
 
-        std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split(
-            bool on_right) const override {
+        std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split() const override {
             if (is_end_) {
                 throw std::logic_error("Cannot split in empty parts");
             }
-            if (on_right) {
-                std::shared_ptr<Node> lhs = it_;
-                std::shared_ptr<Node> rhs = lhs->right_;
-                lhs->right_ = nullptr;
-                if (rhs) {
-                    rhs->parent_ = std::weak_ptr<Node>();
-                }
-                std::shared_ptr<Node> from = lhs->parent_.lock();
-                while (from) {
-                    // The order here is important. We should look at lhs first
-                    if (from->left_ == lhs) {
-                        from->left_ = rhs;
-                        if (rhs) {
-                            rhs->parent_ = from;
-                        }
-                        rhs = from;
-                        if (lhs) {
-                            lhs->parent_ = std::weak_ptr<Node>();
-                        }
-                    } else if (from->right_ == lhs) {
-                        lhs = from;
-                    } else if (from->left_ == rhs) {
-                        rhs = from;
-                    } else if (from->right_ == rhs) {
-                        from->right_ = lhs;
-                        if (lhs) {
-                            lhs->parent_ = from;
-                        }
-                        lhs = from;
-                        if (rhs) {
-                            rhs->parent_ = std::weak_ptr<Node>();
-                        }
-                    } else {
-                        throw std::logic_error("Impossible behaviour");
-                    }
-                    from = from->parent_.lock();
-                }
-                return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
-                                      std::make_shared<CartesianBST<T>>(rhs));
-            } else {
-                std::shared_ptr<Node> rhs = it_;
-                std::shared_ptr<Node> lhs = rhs->left_;
-                rhs->left_ = nullptr;
-                if (lhs) {
-                    lhs->parent_ = std::weak_ptr<Node>();
-                }
-                std::shared_ptr<Node> from = rhs->parent_.lock();
-                while (from) {
-                    // The order here is important. We should look at lhs first
-                    if (from->right_ == rhs) {
-                        from->right_ = lhs;
-                        if (lhs) {
-                            lhs->parent_ = from;
-                        }
-                        lhs = from;
-                        if (rhs) {
-                            rhs->parent_ = std::weak_ptr<Node>();
-                        }
-                    } else if (from->left_ == rhs) {
-                        rhs = from;
-                    } else if (from->right_ == lhs) {
-                        lhs = from;
-                    } else if (from->left_ == lhs) {
-                        from->left_ = rhs;
-                        if (rhs) {
-                            rhs->parent_ = from;
-                        }
-                        rhs = from;
-                        if (lhs) {
-                            lhs->parent_ = std::weak_ptr<Node>();
-                        }
-                    } else {
-                        throw std::logic_error("Impossible behaviour");
-                    }
-                    from = from->parent_.lock();
-                }
-                return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
-                                      std::make_shared<CartesianBST<T>>(rhs));
+            std::shared_ptr<Node> lhs = it_;
+            std::shared_ptr<Node> rhs = lhs->right_;
+            lhs->right_ = nullptr;
+            if (rhs) {
+                rhs->parent_ = std::weak_ptr<Node>();
             }
+            std::shared_ptr<Node> from = lhs->parent_.lock();
+            while (from) {
+                // The order here is important. We should look at lhs first
+                if (from->left_ == lhs) {
+                    from->left_ = rhs;
+                    if (rhs) {
+                        rhs->parent_ = from;
+                    }
+                    rhs = from;
+                    if (lhs) {
+                        lhs->parent_ = std::weak_ptr<Node>();
+                    }
+                } else if (from->right_ == lhs) {
+                    lhs = from;
+                } else if (from->left_ == rhs) {
+                    rhs = from;
+                } else if (from->right_ == rhs) {
+                    from->right_ = lhs;
+                    if (lhs) {
+                        lhs->parent_ = from;
+                    }
+                    lhs = from;
+                    if (rhs) {
+                        rhs->parent_ = std::weak_ptr<Node>();
+                    }
+                } else {
+                    throw std::logic_error("Impossible behaviour");
+                }
+                from = from->parent_.lock();
+            }
+            return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
+                                  std::make_shared<CartesianBST<T>>(rhs));
         }
 
     private:

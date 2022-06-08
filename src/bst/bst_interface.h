@@ -24,8 +24,7 @@ protected:
 
         virtual std::shared_ptr<IBSTItImpl> FindRoot() const = 0;
 
-        virtual std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split(
-            bool on_right) const = 0;
+        virtual std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split() const = 0;
     };
 
     virtual std::shared_ptr<IBSTItImpl> Begin() const = 0;
@@ -40,7 +39,7 @@ public:
 
     class iterator {
     public:
-        iterator() = delete;
+        iterator() = default;
         iterator(const iterator& other) : pimpl_(other.pimpl_) {
         }
         explicit iterator(std::shared_ptr<IBSTItImpl> pimpl) : pimpl_(pimpl) {
@@ -86,12 +85,11 @@ public:
         }
 
         iterator get_root() const {
-            return pimpl_->FindRoot();
+            return iterator(pimpl_->FindRoot());
         }
 
-        std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> split(
-            bool on_right = true) const {
-            return pimpl_->Split(on_right);
+        std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> split() const {
+            return pimpl_->Split();
         }
 
     private:
