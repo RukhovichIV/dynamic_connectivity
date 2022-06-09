@@ -40,12 +40,17 @@ public:
     class iterator {
     public:
         iterator() = default;
-        iterator(const iterator& other) : pimpl_(other.pimpl_) {
+        iterator(const iterator& other) : pimpl_(other.pimpl_->Clone()) {
         }
         explicit iterator(std::shared_ptr<IBSTItImpl> pimpl) : pimpl_(pimpl) {
         }
 
         ~iterator() = default;
+
+        iterator& operator=(const iterator& other) {
+            pimpl_ = other.pimpl_->Clone();
+            return *this;
+        }
 
         iterator& operator++() {
             pimpl_->Increment();

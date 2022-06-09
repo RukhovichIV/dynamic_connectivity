@@ -146,29 +146,16 @@ private:
             if (is_end_) {
                 throw std::logic_error("Cannot split in empty parts");
             }
-            std::shared_ptr<Node> lhs = it_;
-            std::shared_ptr<Node> rhs = lhs->right_;
-            lhs->right_ = nullptr;
-            if (rhs) {
-                rhs->parent_ = std::weak_ptr<Node>();
+            std::shared_ptr<Node> rhs = it_;
+            std::shared_ptr<Node> lhs = rhs->left_;
+            rhs->left_ = nullptr;
+            if (lhs) {
+                lhs->parent_ = std::weak_ptr<Node>();
             }
-            std::shared_ptr<Node> from = lhs->parent_.lock();
+            std::shared_ptr<Node> from = rhs->parent_.lock();
             while (from) {
-                // The order here is important. We should look at lhs first
-                if (from->left_ == lhs) {
-                    from->left_ = rhs;
-                    if (rhs) {
-                        rhs->parent_ = from;
-                    }
-                    rhs = from;
-                    if (lhs) {
-                        lhs->parent_ = std::weak_ptr<Node>();
-                    }
-                } else if (from->right_ == lhs) {
-                    lhs = from;
-                } else if (from->left_ == rhs) {
-                    rhs = from;
-                } else if (from->right_ == rhs) {
+                // The order here is important. We should look at rhs first
+                if (from->right_ == rhs) {
                     from->right_ = lhs;
                     if (lhs) {
                         lhs->parent_ = from;
@@ -176,6 +163,19 @@ private:
                     lhs = from;
                     if (rhs) {
                         rhs->parent_ = std::weak_ptr<Node>();
+                    }
+                } else if (from->left_ == rhs) {
+                    rhs = from;
+                } else if (from->right_ == lhs) {
+                    lhs = from;
+                } else if (from->left_ == lhs) {
+                    from->left_ = rhs;
+                    if (rhs) {
+                        rhs->parent_ = from;
+                    }
+                    rhs = from;
+                    if (lhs) {
+                        lhs->parent_ = std::weak_ptr<Node>();
                     }
                 } else {
                     throw std::logic_error("Impossible behaviour");

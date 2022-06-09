@@ -10,7 +10,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(BST src/bst/bst_interface.h
         src/bst/cartesian_bst.h)
 
-set(FOREST src/forest/spanning_forest.h)
+set(FOREST src/forest/simple_forest.h)
 
 add_library(bst ${BST})
 add_library(forest ${FOREST})

@@ -143,7 +143,7 @@ TEST_CASE("Test simple split") {
     std::vector<int> vals = {1, 2, 3, 4, 5, 6};
     std::shared_ptr<IBST<int>> tree = std::make_shared<CartesianBST<int>>(vals.begin(), vals.end());
     auto it = tree->begin();
-    ++it, ++it;
+    ++it, ++it, ++it;
     auto tree_pair = it.split();
     CheckTreeContent(tree_pair.first, std::vector<int>({1, 2, 3}));
     CheckTreeContent(tree_pair.second, std::vector<int>({4, 5, 6}));
@@ -153,7 +153,7 @@ TEST_CASE("Test split same") {
     std::vector<int> vals = {5, 5, 5, 5, 5, 5};
     std::shared_ptr<IBST<int>> tree = std::make_shared<CartesianBST<int>>(vals.begin(), vals.end());
     auto it = tree->begin();
-    ++it, ++it, ++it;
+    ++it, ++it, ++it, ++it;
     auto tree_pair = it.split();
     CheckTreeContent(tree_pair.first, std::vector<int>({5, 5, 5, 5}));
     CheckTreeContent(tree_pair.second, std::vector<int>({5, 5}));
@@ -167,7 +167,7 @@ TEST_CASE("Test split and merge") {
     std::shared_ptr<IBST<int>> rhs_tree =
         std::make_shared<CartesianBST<int>>(rhs_vals.begin(), rhs_vals.end());
     auto it = rhs_tree->begin();
-    ++it;
+    ++it, ++it;
     auto tree_pair = it.split();
     SECTION("Merge works consecutive") {
         lhs_tree->merge(tree_pair.first);
@@ -178,6 +178,30 @@ TEST_CASE("Test split and merge") {
         lhs_tree->merge(tree_pair.second);
         CheckTreeContent(lhs_tree, std::vector<int>({1, 2, 4, 5}));
         CheckTreeContent(tree_pair.first, std::vector<int>({2, 3}));
+    }
+}
+
+TEST_CASE("Test iterators are not same") {
+    std::vector<int> vals = {1, 2, 3, 4, 5, 6};
+    std::shared_ptr<IBST<int>> tree = std::make_shared<CartesianBST<int>>(vals.begin(), vals.end());
+    auto it = tree->begin();
+    SECTION("Way #1") {
+        auto new_it = tree->begin();
+        ++new_it;
+        REQUIRE(*it == 1);
+        REQUIRE(*new_it == 2);
+    }
+    SECTION("Way #2") {
+        auto new_it = it;
+        ++new_it;
+        REQUIRE(*it == 1);
+        REQUIRE(*new_it == 2);
+    }
+    SECTION("Way #3") {
+        auto new_it = it;
+        ++it;
+        REQUIRE(*it == 2);
+        REQUIRE(*new_it == 1);
     }
 }
 

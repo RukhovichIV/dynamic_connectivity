@@ -4,6 +4,15 @@
 #include "../../src/bst/cartesian_bst.h"
 
 class Forest {
+public:
+    class EdgeHash {
+    public:
+        size_t operator()(const std::pair<size_t, size_t>& pair) const noexcept {
+            return pair.first ^
+                   (pair.second + 0x9e3779b9 + (pair.first << 6ul) + (pair.first >> 2ul));
+        }
+    };
+
 private:
     struct EdgeIterators {
         EdgeIterators() = default;
@@ -15,14 +24,6 @@ private:
         IBST<size_t>::iterator back_;
     };
 
-    class EdgeHash {
-    public:
-        size_t operator()(const std::pair<size_t, size_t>& pair) const noexcept {
-            return pair.first ^
-                   (pair.second + 0x9e3779b9 + (pair.first << 6ul) + (pair.first >> 2ul));
-        }
-    };
-
 public:
     Forest() = delete;
     ~Forest() = default;
@@ -32,6 +33,7 @@ public:
             std::vector<size_t> tour({i});
             auto tree = std::make_shared<CartesianBST<size_t>>(tour.begin(), tour.end());
             vertices_[i] = tree->begin();
+            last_vertices_keeper_[i] = tree->begin();
         }
     }
 
@@ -46,26 +48,24 @@ public:
         std::vector<size_t> add_vertex({u});
         auto add_tree =
             std::make_shared<CartesianBST<size_t>>(add_vertex.begin(), add_vertex.end());
-        if (first_pair.second->empty()) {
-            last_vertices_keeper_[u] = add_tree->begin();
-        }
-        add_tree->merge(first_pair.second);
-        first_pair.second = std::move(add_tree);
-        auto edge_iterator = --first_pair.first->end();
+        auto edge_iterator = add_tree->begin();
+        vertices_[u] = edge_iterator;
+        first_pair.first->merge(add_tree);
 
         auto second_pair = vertices_[v].split();
-        auto back_edge_iterator = --second_pair.first->end();
-        if (!second_pair.second->empty()) {
-            add_vertex = {v};
-            add_tree = std::make_shared<CartesianBST<size_t>>(add_vertex.begin(), add_vertex.end());
-            add_tree->merge(second_pair.second);
-            second_pair.second = std::move(add_tree);
-            vertices_[v] = second_pair.second->begin();
-            auto iterator_to_remove = --second_pair.second->end();
-            last_vertices_keeper_.erase(*iterator_to_remove);
-            auto v_delta_pair = (--iterator_to_remove).split();
-            first_pair.first->merge(v_delta_pair.first);
+        add_vertex = {v};
+        add_tree = std::make_shared<CartesianBST<size_t>>(add_vertex.begin(), add_vertex.end());
+        auto back_edge_iterator = add_tree->begin();
+        second_pair.first->merge(add_tree);
+
+        auto iterator_to_remove = --second_pair.second->end();
+        last_vertices_keeper_.erase(*iterator_to_remove);
+        auto v_delta_pair = iterator_to_remove.split();
+        if (v_delta_pair.first->empty()) {
+            vertices_[v] = back_edge_iterator;
         }
+
+        first_pair.first->merge(v_delta_pair.first);
         second_pair.first->merge(first_pair.second);
         first_pair.first->merge(second_pair.first);
         edges_[std::make_pair(u, v)] = EdgeIterators(edge_iterator, back_edge_iterator);
@@ -88,13 +88,12 @@ public:
         auto edge_iterators = edges_[edge];
         edges_.erase(edge);
         auto first_split = edge_iterators.straight_.split();
-        auto second_split = edge_iterators.back_.split();
-        if (first_split.second->begin() != --second_split.first->end()) {
-            last_vertices_keeper_[v] = --second_split.first->end();
-        }
-        auto last_part = second_split.second->begin().split();
-        last_vertices_keeper_.erase(*last_part.first->begin());
-        first_split.first->merge(last_part.second);
+        auto second_split = (++edge_iterators.back_).split();
+        vertices_[u] = second_split.second->begin();
+        first_split.first->merge(second_split.second);
+
+        auto mid_part = (++first_split.second->begin()).split();
+        last_vertices_keeper_[v] = --second_split.first->end();
     }
 
     bool is_connected(size_t u, size_t v) {
