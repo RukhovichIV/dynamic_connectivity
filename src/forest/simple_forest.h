@@ -71,7 +71,7 @@ public:
         edges_[std::make_pair(u, v)] = EdgeIterators(edge_iterator, back_edge_iterator);
     }
 
-    void remove_existing_edge(size_t u, size_t v) {
+    void erase_existing_edge(size_t u, size_t v) {
         if (u == v) {
             throw std::runtime_error("Loop is not a valid edge");
         }
