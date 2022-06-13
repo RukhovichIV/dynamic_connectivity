@@ -78,7 +78,8 @@ public:
         edges_[std::make_pair(u, v)] = EdgeIterators(edge_iterator, back_edge_iterator);
     }
 
-    std::pair<std::shared_ptr<IBST<size_t>>, std::shared_ptr<IBST<size_t>>> erase_existing_edge(size_t u, size_t v) {
+    std::pair<std::shared_ptr<IBST<size_t>>, std::shared_ptr<IBST<size_t>>> erase_existing_edge(
+        size_t u, size_t v) {
         if (u == v) {
             throw std::runtime_error("Loop is not a valid edge");
         }

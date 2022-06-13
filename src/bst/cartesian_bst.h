@@ -56,8 +56,18 @@ private:
     class CartesianBSTItImpl : public BaseItImpl {
     public:
         CartesianBSTItImpl() = delete;
-        CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false)
+        CartesianBSTItImpl(std::shared_ptr<Node> pointer, bool is_end = false,
+                           bool with_level_edges = false)
             : it_(pointer), is_end_(is_end) {
+            if (with_level_edges && !is_end) {
+                size_t own_edges_count =
+                    it_->child_with_level_edges_count_ -
+                    (it_->left_ ? it_->left_->child_with_level_edges_count_ : 0) -
+                    (it_->right_ ? it_->right_->child_with_level_edges_count_ : 0);
+                if (!own_edges_count) {
+                    NextWithLevelEdges();
+                }
+            }
         }
         CartesianBSTItImpl(const CartesianBSTItImpl& other)
             : it_(other.it_), is_end_(other.is_end_) {
@@ -122,11 +132,15 @@ private:
             }
             if (it_->right_ && it_->right_->child_with_level_edges_count_) {
                 it_ = it_->right_;
-                while (it_->left_ && it_->left_->child_with_level_edges_count_) {
+                if (it_->left_ && it_->left_->child_with_level_edges_count_) {
                     it_ = it_->left_;
                 }
-                if (!it_->left_) {
-                    
+                size_t own_edges_count =
+                    it_->child_with_level_edges_count_ -
+                    (it_->left_ ? it_->left_->child_with_level_edges_count_ : 0) -
+                    (it_->right_ ? it_->right_->child_with_level_edges_count_ : 0);
+                if (!own_edges_count) {
+                    NextWithLevelEdges();
                 }
             } else {
                 auto parent = it_->parent_.lock(), start = it_;
@@ -136,6 +150,13 @@ private:
                 }
                 if (parent) {
                     it_ = parent;
+                    size_t own_edges_count =
+                        it_->child_with_level_edges_count_ -
+                        it_->left_->child_with_level_edges_count_ -
+                        (it_->right_ ? it_->right_->child_with_level_edges_count_ : 0);
+                    if (!own_edges_count) {
+                        NextWithLevelEdges();
+                    }
                 } else {
                     it_ = start;
                     is_end_ = true;
@@ -227,20 +248,25 @@ private:
         }
 
         void SetHasLevelEdges(bool has_level_edges) const override {
-            size_t child_level_edges = (it_->left_ ? it_->left_->child_with_level_edges_count_ : 0) + (it_->right_ ? it_->right_->child_with_level_edges_count_ : 0);
-            int add = static_cast<int>(has_level_edges) - static_cast<int>(it_->child_with_level_edges_count_ - child_level_edges);
+            size_t child_level_edges =
+                (it_->left_ ? it_->left_->child_with_level_edges_count_ : 0) +
+                (it_->right_ ? it_->right_->child_with_level_edges_count_ : 0);
+            int add = static_cast<int>(has_level_edges) -
+                      static_cast<int>(it_->child_with_level_edges_count_ - child_level_edges);
             std::shared_ptr<Node> from = it_;
-            while(from) {
+            while (from) {
                 from->child_with_level_edges_count_ += add;
                 from = from->parent_.lock();
             }
         }
 
         void SetIsVertex(bool is_vertex) const override {
-            size_t children_child_count = (it_->left_ ? it_->left_->child_count_ : 0) + (it_->right_ ? it_->right_->child_count_ : 0);
-            int add = static_cast<int>(is_vertex) - static_cast<int>(it_->child_count_ - children_child_count);
+            size_t children_child_count = (it_->left_ ? it_->left_->child_count_ : 0) +
+                                          (it_->right_ ? it_->right_->child_count_ : 0);
+            int add = static_cast<int>(is_vertex) -
+                      static_cast<int>(it_->child_count_ - children_child_count);
             std::shared_ptr<Node> from = it_;
-            while(from) {
+            while (from) {
                 from->child_count_ += add;
                 from = from->parent_.lock();
             }
@@ -325,11 +351,11 @@ private:
         return root_->child_count_;
     }
 
-    std::shared_ptr<BaseItImpl> Begin() const override {
+    std::shared_ptr<BaseItImpl> Begin(bool with_level_edges) const override {
         if (is_empty_) {
             return std::make_shared<CartesianBSTItImpl>(end_, true);
         }
-        return std::make_shared<CartesianBSTItImpl>(begin_);
+        return std::make_shared<CartesianBSTItImpl>(begin_, false, with_level_edges);
     }
     std::shared_ptr<BaseItImpl> End() const override {
         return std::make_shared<CartesianBSTItImpl>(end_, true);

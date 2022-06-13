@@ -1,6 +1,6 @@
 #define CATCH_CONFIG_MAIN
 
-#include "../../src/forest/simple_forest.h"
+#include "../../src/forest/simple_forest.cpp"
 #include "../catch/catch.hpp"
 
 TEST_CASE("Test empty forest") {

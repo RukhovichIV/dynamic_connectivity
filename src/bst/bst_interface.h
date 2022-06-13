@@ -31,7 +31,7 @@ protected:
         virtual void SetIsVertex(bool is_vertex) const = 0;
     };
 
-    virtual std::shared_ptr<IBSTItImpl> Begin() const = 0;
+    virtual std::shared_ptr<IBSTItImpl> Begin(bool with_level_edges) const = 0;
     virtual std::shared_ptr<IBSTItImpl> End() const = 0;
 
     virtual void Merge(std::shared_ptr<IBST<T>> other) = 0;
@@ -66,6 +66,10 @@ public:
             pimpl_->Increment();
             return cpy;
         }
+        iterator& next_with_level_edges() {
+            pimpl_->NextWithLevelEdges();
+            return *this;
+        }
         iterator& operator--() {
             pimpl_->Decrement();
             return *this;
@@ -74,10 +78,6 @@ public:
             iterator cpy(pimpl_->Clone());
             pimpl_->Decrement();
             return cpy;
-        }
-        iterator& next_with_level_edges() {
-            pimpl_->NextWithLevelEdges();
-            return *this;
         }
 
         const T operator*() const {
@@ -118,8 +118,8 @@ public:
         std::shared_ptr<IBSTItImpl> pimpl_;
     };
 
-    iterator begin() const {
-        return iterator(Begin());
+    iterator begin(bool with_level_edges = false) const {
+        return iterator(Begin(with_level_edges));
     }
     iterator end() const {
         return iterator(End());
