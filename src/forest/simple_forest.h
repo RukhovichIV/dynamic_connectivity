@@ -3,6 +3,8 @@
 #include "../../src/bst/bst_interface.h"
 #include "../../src/bst/cartesian_bst.h"
 
+class LevelGraph;
+
 class Forest {
 public:
     class EdgeHash {
@@ -33,6 +35,7 @@ public:
             std::vector<size_t> tour({i});
             auto tree = std::make_shared<CartesianBST<size_t>>(tour.begin(), tour.end());
             vertices_[i] = tree->begin();
+            tree->begin().set_is_vertex(true);
             last_vertices_keeper_[i] = tree->begin();
         }
     }
@@ -49,7 +52,9 @@ public:
         auto add_tree =
             std::make_shared<CartesianBST<size_t>>(add_vertex.begin(), add_vertex.end());
         auto edge_iterator = add_tree->begin();
+        vertices_[u].set_is_vertex(false);
         vertices_[u] = edge_iterator;
+        vertices_[u].set_is_vertex(true);
         first_pair.first->merge(add_tree);
 
         auto second_pair = vertices_[v].split();
@@ -62,7 +67,9 @@ public:
         last_vertices_keeper_.erase(*iterator_to_remove);
         auto v_delta_pair = iterator_to_remove.split();
         if (v_delta_pair.first->empty()) {
+            vertices_[v].set_is_vertex(false);
             vertices_[v] = back_edge_iterator;
+            vertices_[v].set_is_vertex(true);
         }
 
         first_pair.first->merge(v_delta_pair.first);
@@ -71,7 +78,7 @@ public:
         edges_[std::make_pair(u, v)] = EdgeIterators(edge_iterator, back_edge_iterator);
     }
 
-    void erase_existing_edge(size_t u, size_t v) {
+    std::pair<std::shared_ptr<IBST<size_t>>, std::shared_ptr<IBST<size_t>>> erase_existing_edge(size_t u, size_t v) {
         if (u == v) {
             throw std::runtime_error("Loop is not a valid edge");
         }
@@ -89,11 +96,14 @@ public:
         edges_.erase(edge);
         auto first_split = edge_iterators.straight_.split();
         auto second_split = (++edge_iterators.back_).split();
+        vertices_[u].set_is_vertex(false);
         vertices_[u] = second_split.second->begin();
+        vertices_[u].set_is_vertex(true);
         first_split.first->merge(second_split.second);
 
         auto mid_part = (++first_split.second->begin()).split();
         last_vertices_keeper_[v] = --second_split.first->end();
+        return std::make_pair(first_split.first, mid_part.second);
     }
 
     bool is_connected(size_t u, size_t v) {
@@ -111,4 +121,6 @@ private:
     std::unordered_map<std::pair<size_t, size_t>, EdgeIterators, EdgeHash> edges_;
     std::unordered_map<size_t, IBST<size_t>::iterator> last_vertices_keeper_;
     size_t n_vertices_;
+
+    friend class LevelGraph;
 };

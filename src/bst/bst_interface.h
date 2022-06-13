@@ -16,6 +16,7 @@ protected:
 
         virtual void Increment() = 0;
         virtual void Decrement() = 0;
+        virtual void NextWithLevelEdges() = 0;
 
         virtual const T Dereferencing() const = 0;
         virtual const T* Arrow() const = 0;
@@ -25,6 +26,9 @@ protected:
         virtual std::shared_ptr<IBSTItImpl> FindRoot() const = 0;
 
         virtual std::pair<std::shared_ptr<IBST<T>>, std::shared_ptr<IBST<T>>> Split() const = 0;
+
+        virtual void SetHasLevelEdges(bool has_level_edges) const = 0;
+        virtual void SetIsVertex(bool is_vertex) const = 0;
     };
 
     virtual std::shared_ptr<IBSTItImpl> Begin() const = 0;
@@ -33,6 +37,7 @@ protected:
     virtual void Merge(std::shared_ptr<IBST<T>> other) = 0;
 
     virtual bool IsEmpty() const = 0;
+    virtual size_t Size() const = 0;
 
 public:
     virtual ~IBST() = default;
@@ -70,6 +75,10 @@ public:
             pimpl_->Decrement();
             return cpy;
         }
+        iterator& next_with_level_edges() {
+            pimpl_->NextWithLevelEdges();
+            return *this;
+        }
 
         const T operator*() const {
             return pimpl_->Dereferencing();
@@ -97,6 +106,14 @@ public:
             return pimpl_->Split();
         }
 
+        void set_has_level_edges(bool has_level_edges) const {
+            pimpl_->SetHasLevelEdges(has_level_edges);
+        }
+
+        void set_is_vertex(bool is_vertex) const {
+            pimpl_->SetIsVertex(is_vertex);
+        }
+
     private:
         std::shared_ptr<IBSTItImpl> pimpl_;
     };
@@ -114,5 +131,9 @@ public:
 
     bool empty() const {
         return IsEmpty();
+    }
+
+    size_t size() const {
+        return Size();
     }
 };

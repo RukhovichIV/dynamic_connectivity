@@ -38,12 +38,16 @@ private:
             left_ = nullptr;
             right_ = nullptr;
             parent_ = std::weak_ptr<Node>();
+            child_count_ = 0;
+            child_with_level_edges_count_ = 0;
         }
 
         std::shared_ptr<Node> left_;
         std::shared_ptr<Node> right_;
         std::weak_ptr<Node> parent_;
         uint32_t priority_;
+        uint32_t child_count_;
+        uint32_t child_with_level_edges_count_;
         std::optional<T> value_;
     };
 
@@ -112,6 +116,32 @@ private:
                 }
             }
         }
+        void NextWithLevelEdges() override {
+            if (is_end_) {
+                throw std::runtime_error("Index out of range while increasing");
+            }
+            if (it_->right_ && it_->right_->child_with_level_edges_count_) {
+                it_ = it_->right_;
+                while (it_->left_ && it_->left_->child_with_level_edges_count_) {
+                    it_ = it_->left_;
+                }
+                if (!it_->left_) {
+                    
+                }
+            } else {
+                auto parent = it_->parent_.lock(), start = it_;
+                while (parent && parent->right_ == it_) {
+                    it_ = parent;
+                    parent = it_->parent_.lock();
+                }
+                if (parent) {
+                    it_ = parent;
+                } else {
+                    it_ = start;
+                    is_end_ = true;
+                }
+            }
+        }
 
         const T Dereferencing() const override {
             if (is_end_) {
@@ -148,35 +178,45 @@ private:
             }
             std::shared_ptr<Node> rhs = it_;
             std::shared_ptr<Node> lhs = rhs->left_;
-            rhs->left_ = nullptr;
             if (lhs) {
+                rhs->child_count_ -= lhs->child_count_;
+                rhs->child_with_level_edges_count_ -= lhs->child_with_level_edges_count_;
                 lhs->parent_ = std::weak_ptr<Node>();
             }
+            rhs->left_ = nullptr;
             std::shared_ptr<Node> from = rhs->parent_.lock();
             while (from) {
                 // The order here is important. We should look at rhs first
                 if (from->right_ == rhs) {
+                    if (rhs) {
+                        from->child_count_ -= rhs->child_count_;
+                        from->child_with_level_edges_count_ -= rhs->child_with_level_edges_count_;
+                        rhs->parent_ = std::weak_ptr<Node>();
+                    }
                     from->right_ = lhs;
                     if (lhs) {
+                        from->child_count_ += lhs->child_count_;
+                        from->child_with_level_edges_count_ += lhs->child_with_level_edges_count_;
                         lhs->parent_ = from;
                     }
                     lhs = from;
-                    if (rhs) {
-                        rhs->parent_ = std::weak_ptr<Node>();
-                    }
                 } else if (from->left_ == rhs) {
                     rhs = from;
                 } else if (from->right_ == lhs) {
                     lhs = from;
                 } else if (from->left_ == lhs) {
+                    if (lhs) {
+                        from->child_count_ -= lhs->child_count_;
+                        from->child_with_level_edges_count_ -= lhs->child_with_level_edges_count_;
+                        lhs->parent_ = std::weak_ptr<Node>();
+                    }
                     from->left_ = rhs;
                     if (rhs) {
+                        from->child_count_ += rhs->child_count_;
+                        from->child_with_level_edges_count_ += rhs->child_with_level_edges_count_;
                         rhs->parent_ = from;
                     }
                     rhs = from;
-                    if (lhs) {
-                        lhs->parent_ = std::weak_ptr<Node>();
-                    }
                 } else {
                     throw std::logic_error("Impossible behaviour");
                 }
@@ -184,6 +224,26 @@ private:
             }
             return std::make_pair(std::make_shared<CartesianBST<T>>(lhs),
                                   std::make_shared<CartesianBST<T>>(rhs));
+        }
+
+        void SetHasLevelEdges(bool has_level_edges) const override {
+            size_t child_level_edges = (it_->left_ ? it_->left_->child_with_level_edges_count_ : 0) + (it_->right_ ? it_->right_->child_with_level_edges_count_ : 0);
+            int add = static_cast<int>(has_level_edges) - static_cast<int>(it_->child_with_level_edges_count_ - child_level_edges);
+            std::shared_ptr<Node> from = it_;
+            while(from) {
+                from->child_with_level_edges_count_ += add;
+                from = from->parent_.lock();
+            }
+        }
+
+        void SetIsVertex(bool is_vertex) const override {
+            size_t children_child_count = (it_->left_ ? it_->left_->child_count_ : 0) + (it_->right_ ? it_->right_->child_count_ : 0);
+            int add = static_cast<int>(is_vertex) - static_cast<int>(it_->child_count_ - children_child_count);
+            std::shared_ptr<Node> from = it_;
+            while(from) {
+                from->child_count_ += add;
+                from = from->parent_.lock();
+            }
         }
 
     private:
@@ -213,12 +273,6 @@ public:
         RecalcBeginEnd();
     }
 
-    CartesianBST(const CartesianBST& other) : CartesianBST() {
-        throw std::logic_error("Not implemented");
-        // for (const T& value : other) {
-        //     Insert(value);
-        // }
-    }
     CartesianBST(CartesianBST&& other) noexcept : CartesianBST() {
         std::swap(root_, other.root_);
         std::swap(begin_, other.begin_);
@@ -228,19 +282,7 @@ public:
     CartesianBST(std::shared_ptr<IBST<T>> other)
         : CartesianBST(*std::dynamic_pointer_cast<CartesianBST<T>>(other)) {
     }
-    CartesianBST& operator=(const CartesianBST& other) {
-        throw std::logic_error("Not implemented");
-        // if (root_ == other.root_) {
-        //     return *this;
-        // }
-        // root_ = std::make_shared<Node>();
-        // begin_ = root_;
-        // end_ = root_;
-        // for (const T& value : other) {
-        //     Insert(value);
-        // }
-        // return *this;
-    }
+
     CartesianBST& operator=(CartesianBST&& other) noexcept {
         if (root_ == other.root_) {
             return *this;
@@ -277,6 +319,10 @@ private:
 
     bool IsEmpty() const override {
         return is_empty_;
+    }
+
+    size_t Size() const override {
+        return root_->child_count_;
     }
 
     std::shared_ptr<BaseItImpl> Begin() const override {
@@ -335,9 +381,13 @@ private:
         MakeRecursive(from->right_, ++vmax, end, ++pmax, pend);
         if (from->left_) {
             from->left_->parent_ = from;
+            from->child_count_ += from->left_->child_count_;
+            from->child_with_level_edges_count_ += from->left_->child_with_level_edges_count_;
         }
         if (from->right_) {
             from->right_->parent_ = from;
+            from->child_count_ += from->right_->child_count_;
+            from->child_with_level_edges_count_ += from->right_->child_with_level_edges_count_;
         }
     }
 
@@ -351,12 +401,16 @@ private:
             lhs->right_ = MergeRecursive(lhs->right_, rhs);
             if (lhs->right_) {
                 lhs->right_->parent_ = lhs;
+                lhs->child_count_ += lhs->right_->child_count_;
+                lhs->child_with_level_edges_count_ += lhs->right_->child_with_level_edges_count_;
             }
             return lhs;
         } else {
             rhs->left_ = MergeRecursive(lhs, rhs->left_);
             if (rhs->left_) {
                 rhs->left_->parent_ = rhs;
+                rhs->child_count_ += rhs->left_->child_count_;
+                rhs->child_with_level_edges_count_ += rhs->left_->child_with_level_edges_count_;
             }
             return rhs;
         }
