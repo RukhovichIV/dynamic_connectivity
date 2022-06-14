@@ -3,7 +3,7 @@
 class DynamicGraph {
 public:
     DynamicGraph() = delete;
-    DynamicGraph(size_t n_vertices) {
+    DynamicGraph(size_t n_vertices) : n_vertices_(n_vertices) {
         size_t level = 0u;
         graphs_.emplace_back(std::make_shared<LevelGraph>(level++, n_vertices, nullptr));
         while (1u << level < n_vertices << 1u) {
@@ -12,10 +12,22 @@ public:
     }
 
     void insert(size_t u, size_t v) {
+        if (u == v) {
+            throw std::runtime_error("Loop is not a valid edge");
+        }
+        if (u >= n_vertices_ || v >= n_vertices_) {
+            throw std::runtime_error("No such vertices in graph");
+        }
         graphs_.back()->insert_to_level(u, v);
     }
 
     void erase(size_t u, size_t v) {
+        if (u == v) {
+            throw std::runtime_error("Loop is not a valid edge");
+        }
+        if (u >= n_vertices_ || v >= n_vertices_) {
+            throw std::runtime_error("No such vertices in graph");
+        }
         auto it = graphs_.rbegin();
         while (it != graphs_.rend() &&
                (*it)->edges_at_level_[u].find(v) == (*it)->edges_at_level_[u].end()) {
@@ -44,9 +56,16 @@ public:
     }
 
     bool is_connected(size_t u, size_t v) {
+        if (u == v) {
+            throw std::runtime_error("Loop is not a valid edge");
+        }
+        if (u >= n_vertices_ || v >= n_vertices_) {
+            throw std::runtime_error("No such vertices in graph");
+        }
         return graphs_.back()->is_connected(u, v);
     }
 
 private:
     std::vector<std::shared_ptr<LevelGraph>> graphs_;
+    size_t n_vertices_;
 };
