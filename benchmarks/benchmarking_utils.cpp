@@ -54,7 +54,7 @@ public:
             out.precision(3);
             out << "n_vertex";
             for (uint64_t i = 0; i < nvertex_range.n_runs_; ++i) {
-                out << ", " << i;
+                out << ", run_" << i;
             }
             if (nvertex_range.log_scale_) {
                 assert(nvertex_range.step_ > 1);
@@ -94,6 +94,7 @@ public:
                     }
                 }
             }
+            out.close();
         }
     }
 
